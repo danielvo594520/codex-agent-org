@@ -54,10 +54,13 @@ claude -p \
 
 - 専用 worktree または一時ディレクトリで実行する
 - 実行プロンプトを `tasks/*.md` として保存する
+- 実行ごとに `runs/<timestamp>-claude/` を作成する
 - stdout / stderr / 終了コード / diff を保存する
 - timeout を設定する
 - 秘密情報を環境変数として渡さない
 - 自動 commit / push / deploy はさせない
+
+run log の標準手順は [docs/workflows/claude-code-run.md](docs/workflows/claude-code-run.md) を参照してください。
 
 ## 推奨ディレクトリ構成
 
@@ -77,6 +80,7 @@ docs/
     integrator.md
     claude-code-agent.md
   workflows/
+    claude-code-run.md
     parallel-execution.md
     feature-development.md
     bugfix.md
@@ -112,5 +116,6 @@ runs/
 - [docs/handoff-contract.md](docs/handoff-contract.md): エージェントへ作業を渡す標準フォーマット
 - [docs/safety-rules.md](docs/safety-rules.md): 禁止事項と安全確認
 - [docs/output-formats.md](docs/output-formats.md): 役割別の報告形式
+- [docs/workflows/claude-code-run.md](docs/workflows/claude-code-run.md): Claude Code Agent 実行ログの保存手順
 - [docs/workflows/parallel-execution.md](docs/workflows/parallel-execution.md): 並列実行の標準手順
 - [docs/examples/](docs/examples/): コピペして使える依頼例

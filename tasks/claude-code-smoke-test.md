@@ -11,6 +11,22 @@
 
 `/Users/miyazawa/workspace/codex-agent-org`
 
+## Leader Run Logging
+
+Codex Leader は、このタスクを実行する前に `runs/<timestamp>-claude/` を作成し、以下を保存する。
+
+- `prompt.md`
+- `command.txt`
+- `stdout.log`
+- `stderr.log`
+- `exit.json`
+- `diff.patch`
+
+Claude Code は `cd /Users/miyazawa/workspace/codex-agent-org` してから `claude -p` で実行する。
+`--cwd` は使わない。
+secret を prompt やログへ保存しない。
+Codex Leader は stdout、stderr、exit code、diff を確認してから採用判断する。
+
 ## Allowed Files
 
 - `README.md`

@@ -119,10 +119,22 @@ claude -p \
 
 - 専用 worktree または一時ディレクトリで実行する
 - 実行プロンプトを `tasks/*.md` として保存する
+- 実行ごとに `runs/<timestamp>-claude/` を作成する
 - stdout / stderr / 終了コード / diff を保存する
 - timeout を設定する
 - 秘密情報を環境変数として渡さない
 - 自動 commit / push / deploy はしない
+
+保存する run log:
+
+- `prompt.md`
+- `command.txt`
+- `stdout.log`
+- `stderr.log`
+- `exit.json`
+- `diff.patch`
+
+Codex Leader はログと diff を確認してから採用判断する。
 
 ## Handoff Contract
 
