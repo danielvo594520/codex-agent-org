@@ -118,8 +118,9 @@ claude -p \
 推奨:
 
 - 専用 worktree または一時ディレクトリで実行する
+- Claude Code Agent の実行は `scripts/run-claude-agent` 経由を推奨する
 - 実行プロンプトを `tasks/*.md` として保存する
-- 実行ごとに `runs/<timestamp>-claude/` を作成する
+- 実行ごとに `runs/<timestamp>-<name>/` を作成する
 - stdout / stderr / 終了コード / diff を保存する
 - timeout を設定する
 - 秘密情報を環境変数として渡さない
@@ -135,6 +136,7 @@ claude -p \
 - `diff.patch`
 
 Codex Leader はログと diff を確認してから採用判断する。
+runner はログ保存を補助するだけで、成果物の自動採用、自動 commit、自動 push、自動 deploy は行わない。
 
 ## Handoff Contract
 

@@ -36,6 +36,20 @@
 - Integrator: 複数成果物の統合確認
 - Claude Code Agent: 独立調査、草案、代替案作成
 
+Claude Code Agent を呼ぶ場合は、run log を残すため `scripts/run-claude-agent` 経由を推奨します。
+
+```bash
+scripts/run-claude-agent \
+  --prompt tasks/claude-code-smoke-test.md \
+  --cwd . \
+  --name smoke-test \
+  --timeout-sec 120
+```
+
+Leader は生成された `runs/<timestamp>-smoke-test/` の `exit.json`、`stdout.log`、`stderr.log`、`diff.patch` を確認してから採用判断します。
+
+実際のリハーサル用タスクは [tasks/parallel-feature-smoke-test.md](../../tasks/parallel-feature-smoke-test.md) を参照してください。
+
 ## Handoff examples
 
 ```md

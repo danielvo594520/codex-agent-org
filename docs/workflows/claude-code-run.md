@@ -19,13 +19,13 @@ Claude Code Agent を実行するときに、prompt、stdout、stderr、exit cod
 実行ごとに以下のディレクトリを作成します。
 
 ```text
-runs/<timestamp>-claude/
+runs/<timestamp>-<name>/
 ```
 
 例:
 
 ```text
-runs/20260522-143000-claude/
+runs/20260522-143000-smoke-test/
 ```
 
 保存するファイル:
@@ -36,6 +36,9 @@ runs/20260522-143000-claude/
 - `stderr.log`: 標準エラー
 - `exit.json`: exit code と実行時刻
 - `diff.patch`: 実行後の `git diff`
+
+生成された run log はローカル検証用です。
+secret 混入リスクを避けるため、通常は commit しません。
 
 ## Steps
 
@@ -53,6 +56,44 @@ runs/20260522-143000-claude/
 
 `--cwd` は使いません。
 作業ディレクトリへ移動してから `claude -p` を実行します。
+
+推奨は `scripts/run-claude-agent` を使う方法です。
+
+```bash
+scripts/run-claude-agent \
+  --prompt tasks/claude-code-smoke-test.md \
+  --cwd . \
+  --name smoke-test \
+  --timeout-sec 120
+```
+
+dry-run で、実行前に作成予定の run directory と command を確認できます。
+
+```bash
+scripts/run-claude-agent \
+  --prompt tasks/claude-code-smoke-test.md \
+  --cwd . \
+  --name smoke-test \
+  --dry-run
+```
+
+出力される run directory:
+
+```text
+runs/<timestamp>-smoke-test/
+```
+
+Codex Leader は以下の順で確認します。
+
+1. `exit.json` で exit code、開始時刻、終了時刻、cwd、permission mode、timeout を確認する
+2. `stdout.log` と `stderr.log` を確認する
+3. `diff.patch` を確認する
+4. `git status` と `git diff --stat` で想定外変更がないか確認する
+5. 採用、修正、破棄を判断する
+
+`prompt.md`、`stdout.log`、`stderr.log`、`diff.patch` に secret が含まれないようにしてください。
+
+手動で実行する場合の例:
 
 ```bash
 cd /path/to/worktree

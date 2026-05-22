@@ -1,0 +1,197 @@
+#!/usr/bin/env bash
+
+set -u
+set -o pipefail
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  scripts/run-claude-agent --prompt <file> --cwd <dir> [options]
+
+Options:
+  --prompt <file>             Prompt file to pass to Claude Code Agent.
+  --cwd <dir>                 Working directory. The script cd's here before running claude -p.
+  --name <name>               Run name used in runs/<timestamp>-<name>/ (default: claude).
+  --timeout-sec <seconds>     Timeout seconds when timeout/gtimeout is available (default: 1800).
+  --permission-mode <mode>    Claude Code permission mode (default: default).
+  --dry-run                   Print planned run directory and command without executing.
+  -h, --help                  Show this help.
+USAGE
+}
+
+fail() {
+  printf 'error: %s\n' "$1" >&2
+  exit 1
+}
+
+json_string() {
+  local value=${1-}
+  value=${value//\\/\\\\}
+  value=${value//\"/\\\"}
+  value=${value//$'\n'/\\n}
+  value=${value//$'\r'/\\r}
+  value=${value//$'\t'/\\t}
+  printf '"%s"' "$value"
+}
+
+sanitize_name() {
+  local value=${1:-claude}
+  value=$(printf '%s' "$value" | sed 's/[^A-Za-z0-9._-]/_/g')
+  if [[ -z "$value" ]]; then
+    value="claude"
+  fi
+  printf '%s' "$value"
+}
+
+shell_join() {
+  local out=""
+  local part
+  for part in "$@"; do
+    if [[ -n "$out" ]]; then
+      out+=" "
+    fi
+    printf -v part '%q' "$part"
+    out+="$part"
+  done
+  printf '%s' "$out"
+}
+
+prompt_file=""
+cwd=""
+name="claude"
+timeout_sec="1800"
+permission_mode="default"
+dry_run=0
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --prompt)
+      [[ $# -ge 2 ]] || fail "--prompt requires a file"
+      prompt_file=$2
+      shift 2
+      ;;
+    --cwd)
+      [[ $# -ge 2 ]] || fail "--cwd requires a directory"
+      cwd=$2
+      shift 2
+      ;;
+    --name)
+      [[ $# -ge 2 ]] || fail "--name requires a value"
+      name=$2
+      shift 2
+      ;;
+    --timeout-sec)
+      [[ $# -ge 2 ]] || fail "--timeout-sec requires a value"
+      timeout_sec=$2
+      shift 2
+      ;;
+    --permission-mode)
+      [[ $# -ge 2 ]] || fail "--permission-mode requires a value"
+      permission_mode=$2
+      shift 2
+      ;;
+    --dry-run)
+      dry_run=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      fail "unknown argument: $1"
+      ;;
+  esac
+done
+
+[[ -n "$prompt_file" ]] || fail "--prompt is required"
+[[ -n "$cwd" ]] || fail "--cwd is required"
+[[ "$timeout_sec" =~ ^[0-9]+$ ]] || fail "--timeout-sec must be a positive integer"
+[[ "$timeout_sec" -gt 0 ]] || fail "--timeout-sec must be greater than zero"
+
+command -v claude >/dev/null 2>&1 || fail "claude command not found"
+[[ -d "$cwd" ]] || fail "--cwd directory does not exist: $cwd"
+
+cwd_abs=$(cd "$cwd" && pwd -P) || fail "cannot resolve --cwd: $cwd"
+
+if [[ -f "$prompt_file" ]]; then
+  prompt_abs=$(cd "$(dirname "$prompt_file")" && pwd -P)/$(basename "$prompt_file")
+elif [[ -f "$cwd_abs/$prompt_file" ]]; then
+  prompt_abs=$(cd "$(dirname "$cwd_abs/$prompt_file")" && pwd -P)/$(basename "$prompt_file")
+else
+  fail "--prompt file does not exist: $prompt_file"
+fi
+
+safe_name=$(sanitize_name "$name")
+timestamp=$(date +%Y%m%d-%H%M%S)
+run_dir_rel="runs/${timestamp}-${safe_name}"
+run_dir_abs="$cwd_abs/$run_dir_rel"
+
+claude_cmd=(claude -p --permission-mode "$permission_mode" --output-format json)
+timeout_cmd=()
+timeout_label="none"
+
+if command -v timeout >/dev/null 2>&1; then
+  timeout_cmd=(timeout "$timeout_sec")
+  timeout_label="timeout"
+elif command -v gtimeout >/dev/null 2>&1; then
+  timeout_cmd=(gtimeout "$timeout_sec")
+  timeout_label="gtimeout"
+fi
+
+command_text=$(
+  printf 'cd %q\n' "$cwd_abs"
+  if [[ ${#timeout_cmd[@]} -gt 0 ]]; then
+    shell_join "${timeout_cmd[@]}" "${claude_cmd[@]}"
+  else
+    shell_join "${claude_cmd[@]}"
+  fi
+  printf ' "$(cat %q)"\n' "$run_dir_rel/prompt.md"
+)
+
+if [[ "$dry_run" -eq 1 ]]; then
+  printf 'Run directory: %s\n' "$run_dir_abs"
+  printf 'Command:\n%s' "$command_text"
+  exit 0
+fi
+
+mkdir -p "$run_dir_abs" || fail "cannot create run directory: $run_dir_abs"
+cp "$prompt_abs" "$run_dir_abs/prompt.md" || fail "cannot copy prompt"
+printf '%s' "$command_text" > "$run_dir_abs/command.txt" || fail "cannot write command.txt"
+
+start_time=$(date -Iseconds)
+exit_code=0
+
+set +e
+(
+  cd "$cwd_abs" || exit 1
+  if [[ "$timeout_label" == "none" ]]; then
+    printf 'warning: timeout/gtimeout not found; running without timeout\n' >&2
+    "${claude_cmd[@]}" "$(cat "$run_dir_abs/prompt.md")"
+  else
+    "${timeout_cmd[@]}" "${claude_cmd[@]}" "$(cat "$run_dir_abs/prompt.md")"
+  fi
+) > "$run_dir_abs/stdout.log" 2> "$run_dir_abs/stderr.log"
+exit_code=$?
+set -e
+
+end_time=$(date -Iseconds)
+
+{
+  printf '{\n'
+  printf '  "exit_code": %s,\n' "$exit_code"
+  printf '  "started_at": %s,\n' "$(json_string "$start_time")"
+  printf '  "ended_at": %s,\n' "$(json_string "$end_time")"
+  printf '  "cwd": %s,\n' "$(json_string "$cwd_abs")"
+  printf '  "permission_mode": %s,\n' "$(json_string "$permission_mode")"
+  printf '  "timeout_sec": %s,\n' "$timeout_sec"
+  printf '  "timeout_command": %s,\n' "$(json_string "$timeout_label")"
+  printf '  "run_dir": %s\n' "$(json_string "$run_dir_rel")"
+  printf '}\n'
+} > "$run_dir_abs/exit.json"
+
+git -C "$cwd_abs" diff -- . > "$run_dir_abs/diff.patch" 2>> "$run_dir_abs/stderr.log" || true
+
+printf 'Run directory: %s\n' "$run_dir_abs"
+printf 'Exit code: %s\n' "$exit_code"
+exit "$exit_code"

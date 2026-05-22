@@ -54,13 +54,40 @@ claude -p \
 
 - 専用 worktree または一時ディレクトリで実行する
 - 実行プロンプトを `tasks/*.md` として保存する
-- 実行ごとに `runs/<timestamp>-claude/` を作成する
+- 実行ごとに `runs/<timestamp>-<name>/` を作成する
 - stdout / stderr / 終了コード / diff を保存する
 - timeout を設定する
 - 秘密情報を環境変数として渡さない
 - 自動 commit / push / deploy はさせない
 
 run log の標準手順は [docs/workflows/claude-code-run.md](docs/workflows/claude-code-run.md) を参照してください。
+
+## Runner
+
+`scripts/run-claude-agent` は、Claude Code Agent を呼び出し、prompt、実行コマンド、stdout、stderr、exit metadata、git diff を `runs/<timestamp>-<name>/` に保存する補助スクリプトです。
+
+最小実行例:
+
+```bash
+scripts/run-claude-agent \
+  --prompt tasks/claude-code-smoke-test.md \
+  --cwd . \
+  --name smoke-test \
+  --timeout-sec 120
+```
+
+実行前に確認する場合:
+
+```bash
+scripts/run-claude-agent \
+  --prompt tasks/claude-code-smoke-test.md \
+  --cwd . \
+  --name smoke-test \
+  --dry-run
+```
+
+複数エージェント運用のリハーサルは [tasks/parallel-feature-smoke-test.md](tasks/parallel-feature-smoke-test.md) を使います。
+runner はログ保存を補助するだけで、成果物の自動採用、自動 commit、自動 push、自動 deploy は行いません。
 
 ## 推奨ディレクトリ構成
 
@@ -93,8 +120,12 @@ docs/
     claude-code-handoff.md
 tasks/
   complete-repository.md
+  parallel-feature-smoke-test.md
 runs/
   .gitkeep
+scripts/
+  README.md
+  run-claude-agent
 ```
 
 ## まだ実装しないこと
@@ -102,7 +133,7 @@ runs/
 このリポジトリは、まず運用ルールと指示書を整えることを目的にします。
 以下は現時点では対象外です。
 
-- Claude Code 呼び出し CLI
+- 本格的な CLI / package 化
 - Web UI
 - 自動 commit
 - 自動 push
