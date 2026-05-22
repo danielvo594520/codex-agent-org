@@ -44,7 +44,7 @@ secret 混入リスクを避けるため、通常は commit しません。
 
 1. Codex Leader が Handoff Contract に沿って prompt を作る
 2. secret や本番データが prompt に含まれていないことを確認する
-3. `runs/<timestamp>-claude/` を作成する
+3. `runs/<timestamp>-<name>/` を作成する
 4. prompt を `prompt.md` に保存する
 5. `cd /path/to/worktree` してから `claude -p` を実行する
 6. stdout / stderr / exit code を保存する
@@ -65,6 +65,13 @@ scripts/run-claude-agent \
   --cwd . \
   --name smoke-test \
   --timeout-sec 120
+```
+
+macOS で timeout を有効化したい場合は、Homebrew の coreutils を入れます。
+runner は `gtimeout` が見つかれば自動で利用します。
+
+```bash
+brew install coreutils
 ```
 
 dry-run で、実行前に作成予定の run directory と command を確認できます。
@@ -151,11 +158,11 @@ Codex Leader は実行後に以下を確認します。
 ```bash
 git status
 git diff --stat
-cat runs/<timestamp>-claude/exit.json
-test -s runs/<timestamp>-claude/prompt.md
-test -f runs/<timestamp>-claude/stdout.log
-test -f runs/<timestamp>-claude/stderr.log
-test -f runs/<timestamp>-claude/diff.patch
+cat runs/<timestamp>-<name>/exit.json
+test -s runs/<timestamp>-<name>/prompt.md
+test -f runs/<timestamp>-<name>/stdout.log
+test -f runs/<timestamp>-<name>/stderr.log
+test -f runs/<timestamp>-<name>/diff.patch
 ```
 
 ## Done criteria

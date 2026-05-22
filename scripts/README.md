@@ -15,3 +15,11 @@ scripts/run-claude-agent \
 ```
 
 Use `--dry-run` to inspect the planned run directory and command without executing Claude Code.
+
+On macOS, install Homebrew coreutils if you want timeout enforcement:
+
+```bash
+brew install coreutils
+```
+
+The runner automatically uses `gtimeout` when it is available.
